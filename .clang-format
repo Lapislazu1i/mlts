@@ -1,0 +1,25 @@
+BasedOnStyle: Microsoft
+IndentWidth: 4
+KeepEmptyLinesAtTheStartOfBlocks:	true
+AlignTrailingComments: true
+AccessModifierOffset: -4
+MaxEmptyLinesToKeep:	2
+SortIncludes:	true
+BraceWrapping:   
+  AfterClass:	true
+  AfterControlStatement:	true
+  AfterEnum:	true
+  AfterFunction:	true
+  AfterNamespace:	true
+  AfterObjCDeclaration:	true
+  AfterStruct:	true
+  AfterUnion:	true
+  BeforeCatch:	true
+  BeforeElse:	true
+  IndentBraces:	false
+Language: Cpp
+# Force pointers to the type for C++.
+DerivePointerAlignment: false
+PointerAlignment: Left
+SpaceAfterTemplateKeyword: false
+AlwaysBreakTemplateDeclarations: true
