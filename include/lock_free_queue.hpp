@@ -13,7 +13,7 @@ namespace mlts
 template<typename T>
 struct lock_free_queue_node
 {
-    std::atomic<T> m_value;
+    T m_value;
     std::atomic<lock_free_queue_node*> m_next{};
 };
 
@@ -78,6 +78,10 @@ public:
         return true;
     }
 
+    bool empty() const
+    {
+        
+    }
 
 private:
     std::atomic<node*> m_head{nullptr};
