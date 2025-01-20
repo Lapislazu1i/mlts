@@ -11,5 +11,6 @@ file(GLOB mlts_test_src_files "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/lock_free_queue")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/thread_pool")
 
 

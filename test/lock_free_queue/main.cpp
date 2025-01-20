@@ -6,7 +6,7 @@
 #include <mutex>
 #include <queue>
 #include <vector>
-
+#include <functional>
 
 using fq_node_type = mlts::lock_free_queue_node<int>;
 struct test_allocator
@@ -161,13 +161,13 @@ TEST(lock_free_queue, mul_thread_push_back_cmp_res)
     // EXPECT_EQ(free_res, free_res2);
 }
 
-TEST(lock_free_queue, mul_thread_pop_front_cmp_res)
+TEST(lock_free_queue, single_thread_pop_front_cmp_res)
 {
     std::mutex mutex{};
     std::vector<std::thread> threads{};
     mlts::lock_free_queue<int> queue{};
     queue.push_back(0);
-    int max_int{1000};
+    int max_int{100000};
     int thread_size = 16;
 
     for (int i = 0; i < thread_size; ++i)
@@ -242,8 +242,82 @@ TEST(lock_free_queue, mul_thread_pop_front_cmp_res)
 }
 
 
-int main(int argc, char** argv)
+TEST(lock_free_queue, single_thread_pop_front_func_cmp_res)
 {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    std::mutex mutex{};
+    std::vector<std::thread> threads{};
+    mlts::lock_free_queue<std::function<int()>> queue{};
+    queue.push_back([](){return 0;});
+    int max_int{100000};
+    int thread_size = 16;
+
+    for (int i = 0; i < thread_size; ++i)
+    {
+        threads.emplace_back([&queue, max_int]() {
+            for (int j = 0; j < max_int; ++j)
+            {
+                queue.push_back([j]() { return j; });
+            }
+        });
+    }
+
+
+    std::int64_t free_res{};
+
+    std::vector<std::thread> pop_threads{};
+
+    size_t all_len = thread_size * max_int;
+
+    for (int i = 0; i < 1; ++i)
+    {
+        pop_threads.emplace_back([&queue, &free_res, &mutex, &all_len]() {
+            bool op;
+
+            for (size_t j = 0; j < all_len;)
+            {
+
+                std::function<int()> tmp_int{};
+                op = queue.pop_front(tmp_int);
+                if (op)
+                {
+                    mutex.lock();
+                    free_res += tmp_int();
+                    mutex.unlock();
+                    ++j;
+                }
+            }
+        });
+    }
+
+    for (auto& th : pop_threads)
+    {
+        th.join();
+    }
+
+    for (auto& th : threads)
+    {
+        th.join();
+    }
+
+    // need pop again
+    std::function<int()> tmp_int{};
+    auto op = queue.pop_front(tmp_int);
+    free_res += tmp_int();
+    std::int64_t right_res{};
+    for (int i = 0; i < max_int; ++i)
+    {
+        right_res += i;
+    }
+    right_res *= thread_size;
+
+    std::int64_t rit{};
+    for (int i = 0; i < thread_size; ++i)
+    {
+        for (int j = 0; j < max_int; ++j)
+        {
+            rit += j;
+        }
+    }
+
+    EXPECT_EQ(free_res, right_res);
 }

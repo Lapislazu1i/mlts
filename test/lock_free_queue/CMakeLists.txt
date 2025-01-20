@@ -4,5 +4,5 @@ add_executable(lock_free_queue_test
     ${lock_free_queue_test_src_files}
 )
 target_link_libraries(lock_free_queue_test PRIVATE
-    GTest::gtest
+    GTest::gtest_main
 )

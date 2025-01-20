@@ -62,25 +62,17 @@ public:
 
     bool pop_front(value_type& val)
     {
-        node* o = m_head.load(std::memory_order_acquire);
-        node* n = o->m_next.load(std::memory_order_acquire);
+        node* const o = m_head.load(std::memory_order_relaxed);
+        node* const n = o->m_next.load(std::memory_order_acquire);
         if (n == nullptr) [[unlikely]]
         {
             return false;
         }
         val = std::move(n->m_value);
-
-        while (not m_head.compare_exchange_weak(o, n, std::memory_order_release, std::memory_order_relaxed))
-        {
-        }
+        m_head.store(n, std::memory_order_relaxed);
         std::destroy_at(o);
         m_alloc.deallocate(o, 1);
         return true;
-    }
-
-    bool empty() const
-    {
-        
     }
 
 private:
