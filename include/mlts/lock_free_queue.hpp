@@ -17,7 +17,7 @@ struct lock_free_queue_node
     std::atomic<lock_free_queue_node*> m_next{};
 };
 
-// apply for signal consumer, multiple producers
+// apply for single consumer, multiple producers
 template<typename T, typename Alloc = std::allocator<lock_free_queue_node<std::remove_cvref_t<T>>>>
 class lock_free_queue
 {
