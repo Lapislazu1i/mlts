@@ -3,7 +3,7 @@
     "clangd.checkUpdates": true,
     "clangd.arguments": [
         "--background-index", /// 在后台自动分析文件（基于complie_commands)
-        "--compile-commands-dir=D:\\git\\mlts\\build", /// 标记compelie_commands.json文件的目录位置
+        "--compile-commands-dir=build", /// 标记compelie_commands.json文件的目录位置
         "-j=8", /// 同时开启的任务数量
         "--query-driver=clang++.exe", /// clang 路径，使用命令 which clang++ 获取的的路径
         "--all-scopes-completion", /// 全局补全（会自动补充头文件）
