@@ -1,5 +1,5 @@
 {
-    // "cmake.generator": "Ninja",
+    "cmake.generator": "Ninja",
     "clangd.checkUpdates": true,
     "clangd.arguments": [
         "--background-index", /// 在后台自动分析文件（基于complie_commands)
