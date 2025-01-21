@@ -28,9 +28,28 @@ TEST(thread_pool, identify_true_mul_thread)
     tp.push_func([&s2]() { s2 = std::this_thread::get_id(); });
     tp.wait_done();
     // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
+
     EXPECT_EQ(s1 == s2, false);
 }
+
+
+TEST(thread_pool, reset_thread)
+{
+    mlts::thread_pool<> tp(1);
+    tp.reset(2);
+    std::thread::id s1{};
+    std::thread::id s2{};
+    tp.push_func([&s1]() { s1 = std::this_thread::get_id(); });
+    tp.push_func([&s2]() { s2 = std::this_thread::get_id(); });
+    for (int i = 0; i < 100; ++i)
+    {
+        tp.push_func([]() { auto s2 = std::this_thread::get_id(); });
+    }
+    tp.wait_done();
+    // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(s1 == s2, false);
+}
+
 
 TEST(thread_pool, mul_thread_push_func)
 {
@@ -68,4 +87,3 @@ TEST(thread_pool, mul_thread_push_func)
     tp.wait_done(std::chrono::milliseconds(1));
     EXPECT_EQ(real_val, right_val);
 }
-

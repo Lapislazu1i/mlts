@@ -3,9 +3,10 @@
 #include "get_index_policy.hpp"
 #include "lock_free_queue.hpp"
 #include <algorithm>
-#include <thread>
 #include <atomic>
 #include <memory>
+#include <thread>
+
 
 namespace mlts
 {
@@ -26,7 +27,7 @@ class thread_pool
         explicit thread(thread_state state, std::chrono::milliseconds idle_period, size_t idle_count_max)
             : m_state(std::make_unique<std::atomic<thread_state>>()),
               m_queue(std::make_unique<lock_free_queue<function>>()), m_idle_period(idle_period),
-              m_idle_count_max(idle_count_max), m_idle_count(0),
+              m_idle_count_max(idle_count_max), m_idle_count(0), m_is_close(std::make_unique<std::atomic<bool>>()),
               m_ins(std::make_unique<std::thread>([this]() { work(); }))
         {
         }
@@ -35,10 +36,13 @@ class thread_pool
 
         ~thread()
         {
-            m_is_close = true;
-            if (m_ins && m_ins->joinable())
+            m_is_close->store(true);
+            if (m_ins)
             {
-                m_ins->join();
+                if (m_ins->joinable())
+                {
+                    m_ins->join();
+                }
             }
         }
 
@@ -67,11 +71,9 @@ class thread_pool
 
         void work()
         {
-            bool ret;
             while (1)
             {
-                ++m_count;
-                if (m_is_close) [[unlikely]]
+                if (m_is_close->load(std::memory_order_relaxed)) [[unlikely]]
                 {
                     return;
                 }
@@ -107,20 +109,19 @@ class thread_pool
             }
         }
 
-        size_t m_count{};
         std::unique_ptr<std::atomic<thread_state>> m_state;
         std::unique_ptr<lock_free_queue<function>> m_queue;
         std::chrono::milliseconds m_idle_period;
         size_t m_idle_count_max;
         size_t m_idle_count;
+        std::unique_ptr<std::atomic<bool>> m_is_close;
         std::unique_ptr<std::thread> m_ins;
-        bool m_is_close{false};
     };
 
 public:
     thread_pool(size_t thread_size = 4, std::chrono::milliseconds idle_period = std::chrono::milliseconds(200),
                 size_t idle_count_max = 10000)
-        : m_index_policy(thread_size), m_idle_period(idle_period)
+        : m_index_policy(thread_size), m_idle_period(idle_period), m_idle_count_max(idle_count_max)
     {
         for (size_t i = 0; i < thread_size; ++i)
         {
@@ -157,7 +158,8 @@ public:
             for (auto& thp : m_threads)
             {
                 auto& th = *thp;
-                res.emplace_back(static_cast<char>(th.m_state->load(std::memory_order_relaxed) != thread_state::normal));
+                res.emplace_back(
+                    static_cast<char>(th.m_state->load(std::memory_order_relaxed) != thread_state::normal));
             }
             if (std::all_of(res.begin(), res.end(), [](char v) { return v == 1; }))
             {
@@ -167,10 +169,27 @@ public:
         }
     }
 
+    void reset(size_t count)
+    {
+        if(count == 0)
+        {
+            count = 1;
+        }
+        get_index_policy new_policy(count);
+        m_index_policy = std::move(new_policy);
+        m_threads.clear();
+        for (size_t i = 0; i < count; ++i)
+        {
+            auto th = std::make_unique<thread>(thread_state::normal, m_idle_period, m_idle_count_max);
+            m_threads.emplace_back(std::move(th));
+        }
+    }
+
 private:
     std::vector<std::unique_ptr<thread>> m_threads;
     get_index_policy m_index_policy;
     std::chrono::milliseconds m_idle_period;
+    size_t m_idle_count_max;
 };
 
 
