@@ -46,6 +46,11 @@ public:
         }
     }
 
+    lock_free_queue(const lock_free_queue&) = delete;
+    lock_free_queue& operator=(const lock_free_queue& other) = delete;
+    lock_free_queue(lock_free_queue&&) noexcept = delete;
+    lock_free_queue& operator=(lock_free_queue&&) noexcept = delete;
+
     template<typename TValue>
     void push_back(TValue val)
     {

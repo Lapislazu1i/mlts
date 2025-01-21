@@ -32,8 +32,6 @@ class thread_pool
         {
         }
 
-        thread(thread&&) = default;
-
         ~thread()
         {
             m_is_close->store(true);
@@ -45,6 +43,11 @@ class thread_pool
                 }
             }
         }
+
+        thread(const thread&) = delete;
+        thread& operator=(const thread& other) = delete;
+        thread(thread&&) noexcept = default;
+        thread& operator=(thread&&) noexcept = default;
 
         bool run_one()
         {
@@ -130,6 +133,11 @@ public:
         }
     }
 
+    thread_pool(const thread_pool&) = delete;
+    thread_pool& operator=(const thread_pool& other) = delete;
+    thread_pool(thread_pool&&) noexcept = default;
+    thread_pool& operator=(thread_pool&&) noexcept = default;
+
     template<typename Func>
     void push_func(Func&& f)
     {
@@ -171,7 +179,7 @@ public:
 
     void reset(size_t count)
     {
-        if(count == 0)
+        if (count == 0)
         {
             count = 1;
         }
