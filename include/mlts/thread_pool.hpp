@@ -11,7 +11,7 @@
 namespace mlts
 {
 
-template<typename TFunc = std::function<void()>>
+template<typename TFunc = std::function<void()>, typename TQueue = lock_free_queue<TFunc>>
 class thread_pool
 {
     enum class thread_state : int
@@ -113,7 +113,7 @@ class thread_pool
         }
 
         std::unique_ptr<std::atomic<thread_state>> m_state;
-        std::unique_ptr<lock_free_queue<function>> m_queue;
+        std::unique_ptr<TQueue> m_queue;
         std::chrono::milliseconds m_idle_period;
         size_t m_idle_count_max;
         size_t m_idle_count;
@@ -133,6 +133,7 @@ public:
         }
     }
 
+    ~thread_pool() = default;
     thread_pool(const thread_pool&) = delete;
     thread_pool& operator=(const thread_pool& other) = delete;
     thread_pool(thread_pool&&) noexcept = default;

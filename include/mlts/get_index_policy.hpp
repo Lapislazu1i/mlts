@@ -10,7 +10,8 @@ struct get_index_policy
         : m_index(std::make_unique<decltype(m_index)::element_type>()), m_max_size(max_size)
     {
     }
-
+    
+    ~get_index_policy() = default;
     get_index_policy(const get_index_policy&) = delete;
     get_index_policy& operator=(const get_index_policy& other) = delete;
     get_index_policy(get_index_policy&&) noexcept = default;

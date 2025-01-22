@@ -26,7 +26,7 @@ public:
     using node = lock_free_queue_node<T>;
     using value_type = std::remove_cvref_t<T>;
 
-    lock_free_queue()
+    lock_free_queue() : m_alloc()
     {
         static_assert(std::atomic<node*>::is_always_lock_free, "not support lock free");
         static_assert(std::atomic<size_t>::is_always_lock_free, "not support lock free");
