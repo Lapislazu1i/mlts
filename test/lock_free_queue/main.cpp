@@ -1,7 +1,7 @@
 #include "mlts/allocator.hpp"
 #include "mlts/lock_free_queue.hpp"
 #include "mlts/timer.hpp"
-#include <format>
+#include <sstream>
 #include <fstream>
 #include <functional>
 #include <gtest/gtest.h>
@@ -156,8 +156,9 @@ TEST(lock_free_queue, mul_thread_push_back_cmp_res)
             free_res += tmp_int;
         }
     } while (op == true);
-    std::ofstream ofs(stdout);
-    ofs << std::format("normal {} free {}\n", normal_time, free_time);
+    std::stringstream ss{};
+    ss << "normal " << normal_time << "free " << free_time << "\n";
+    fprintf(stdout, "%s",ss.str().c_str());
     EXPECT_EQ(free_res, normal_res);
 }
 
@@ -236,8 +237,9 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res)
             free_res += tmp_int();
         }
     } while (op == true);
-    std::ofstream ofs(stdout);
-    ofs << std::format("normal {} free {}\n", normal_time, free_time);
+    std::stringstream ss{};
+    ss << "normal " << normal_time << "free " << free_time << "\n";
+    fprintf(stdout, "%s",ss.str().c_str());
     EXPECT_EQ(free_res, normal_res);
 }
 
@@ -319,8 +321,9 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res_with_static_mp_sc_circul
             free_res += tmp_int();
         }
     } while (op == true);
-    std::ofstream ofs(stdout);
-    ofs << std::format("normal {} free {}\n", normal_time, free_time);
+    std::stringstream ss{};
+    ss << "normal " << normal_time << "free " << free_time << "\n";
+    fprintf(stdout, "%s",ss.str().c_str());
     EXPECT_EQ(free_res, normal_res);
 }
 
@@ -410,8 +413,9 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res)
     right_res *= thread_size;
 
 
-    std::ofstream ofs(stdout);
-    ofs << std::format("normal {} free {}\n", normal_time, free_time);
+    std::stringstream ss{};
+    ss << "normal " << normal_time << "free " << free_time << "\n";
+    fprintf(stdout, "%s",ss.str().c_str());
     EXPECT_EQ(free_res, normal_res);
 }
 
@@ -502,8 +506,9 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res_with_static_mp_
     right_res *= thread_size;
 
 
-    std::ofstream ofs(stdout);
-    ofs << std::format("normal {} free {}\n", normal_time, free_time);
+    std::stringstream ss{};
+    ss << "normal " << normal_time << "free " << free_time << "\n";
+    fprintf(stdout, "%s",ss.str().c_str());
     EXPECT_EQ(free_res, normal_res);
 }
 

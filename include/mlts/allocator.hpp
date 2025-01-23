@@ -60,18 +60,30 @@ public:
         {
             std::logic_error("allocation only one on a time");
         }
-
+        auto wait_count = AllocatorWaitCount;
         difference_type tail = m_tail.load(std::memory_order_relaxed);
 
         do
         {
-            difference_type head = m_head.load(std::memory_order_relaxed);
-            difference_type diff = tail - head;
-
-            if (diff == 0) [[unlikely]]
+            while (1)
             {
-                throw std::runtime_error("mp_sc_circular_queue_allocator capacity is not enough");
+                difference_type head = m_head.load(std::memory_order_relaxed);
+                difference_type diff = tail - head;
+
+                if (diff == 0) [[unlikely]]
+                {
+                    ++wait_count;
+                    if(wait_count < 0)
+                    {
+                        throw std::runtime_error("mp_sc_circular_queue_allocator capacity is not enough");
+                    }
+                }
+                else
+                {
+                    break;
+                }
             }
+
 
         } while (not m_tail.compare_exchange_strong(tail, (tail + 1) % capacity(), std::memory_order_release,
                                                     std::memory_order_relaxed));
@@ -94,7 +106,7 @@ public:
         }
     }
 
-    constexpr const auto& capacity() const
+    constexpr auto capacity() const
     {
         return m_buffer.size();
     }
