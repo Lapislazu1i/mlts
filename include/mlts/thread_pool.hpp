@@ -156,6 +156,14 @@ public:
         th.m_queue->push_back(std::forward<Func>(f));
     }
 
+    template<typename Func>
+    void push_func(size_t index, Func&& f)
+    {
+        auto& thp = m_threads.at(index);
+        auto& th = *thp;
+        th.m_queue->push_back(std::forward<Func>(f));
+    }
+
     void wait_done(std::chrono::milliseconds wait_period = std::chrono::milliseconds(100)) const
     {
         std::this_thread::sleep_for(m_idle_period * 2);
