@@ -18,16 +18,19 @@ class thread_pool
     {
         normal,
         idle,
+        yield,
+        wait,
     };
 
     using function = TFunc;
 
     struct thread
     {
-        explicit thread(thread_state state, std::chrono::milliseconds idle_period, size_t idle_count_max)
+        explicit thread(thread_state state, size_t idle_count_max)
             : m_state(std::make_unique<std::atomic<thread_state>>()),
-              m_queue(std::make_unique<lock_free_queue<function>>()), m_idle_period(idle_period),
-              m_idle_count_max(idle_count_max), m_idle_count(0), m_is_close(std::make_unique<std::atomic<bool>>()),
+              m_queue(std::make_unique<lock_free_queue<function>>()), m_idle_count_max(idle_count_max), m_idle_count(0),
+              m_yield_count(0), m_wait_count(0), m_is_close(std::make_unique<std::atomic<bool>>(false)),
+              m_is_wait(std::make_unique<std::atomic<bool>>(false)),
               m_ins(std::make_unique<std::thread>([this]() { work(); }))
         {
         }
@@ -35,6 +38,8 @@ class thread_pool
         ~thread()
         {
             m_is_close->store(true);
+            m_is_wait->store(false, std::memory_order_release);
+            m_is_wait->notify_all();
             if (m_ins)
             {
                 if (m_ins->joinable())
@@ -56,18 +61,10 @@ class thread_pool
             {
                 return false;
             }
-            bool ret = m_queue->pop_front(f);
+            bool ret = m_queue->pop(f);
             if (ret) [[likely]]
             {
                 f();
-            }
-            else
-            {
-                if (m_idle_count > m_idle_count_max)
-                {
-                    m_state->store(thread_state::idle, std::memory_order_relaxed);
-                }
-                ++m_idle_count;
             }
             return ret;
         }
@@ -89,22 +86,63 @@ class thread_pool
                     {
                         continue;
                     }
-                    ++m_idle_count;
-                    if (m_idle_count > m_idle_count_max)
+                    if (m_idle_count >= m_idle_count_max)
                     {
                         m_idle_count = 0;
                         m_state->store(thread_state::idle, std::memory_order_relaxed);
                     }
+                    ++m_idle_count;
                     continue;
                     break;
                 }
                 case thread_state::idle: {
-                    std::this_thread::sleep_for(m_idle_period);
+                    if (m_yield_count >= m_idle_count_max)
+                    {
+                        m_yield_count = 0;
+                        m_state->store(thread_state::yield, std::memory_order_relaxed);
+                    }
                     if (run_one())
                     {
+                        m_yield_count = 0;
                         m_state->store(thread_state::normal, std::memory_order_relaxed);
                     }
+                    else
+                    {
+                        ++m_yield_count;
+                    }
+                    continue;
+                    break;
+                }
 
+                case thread_state::yield: {
+                    if (m_wait_count >= m_idle_count_max)
+                    {
+                        m_wait_count = 0;
+                        m_is_wait->store(true, std::memory_order_release);
+                        m_is_wait->notify_all();
+                        m_state->store(thread_state::wait, std::memory_order_relaxed);
+                    }
+                    if (run_one())
+                    {
+                        m_wait_count = 0;
+                        m_state->store(thread_state::normal, std::memory_order_relaxed);
+                    }
+                    else
+                    {
+                        ++m_wait_count;
+                        std::this_thread::yield();
+                    }
+                    continue;
+                    break;
+                }
+
+                case thread_state::wait: {
+                    m_is_wait->wait(true, std::memory_order_acquire);
+                    if (run_one())
+                    {
+                        m_is_wait->store(false, std::memory_order_release);
+                        m_state->store(thread_state::normal, std::memory_order_relaxed);
+                    }
                     continue;
                     break;
                 }
@@ -112,23 +150,32 @@ class thread_pool
             }
         }
 
+        template<typename AddFunc>
+        void add_task(AddFunc&& f)
+        {
+            m_queue->push(std::forward<AddFunc>(f));
+            m_is_wait->store(false, std::memory_order_release);
+            m_is_wait->notify_all();
+        }
+
         std::unique_ptr<std::atomic<thread_state>> m_state;
         std::unique_ptr<TQueue> m_queue;
-        std::chrono::milliseconds m_idle_period;
         size_t m_idle_count_max;
         size_t m_idle_count;
+        size_t m_yield_count;
+        size_t m_wait_count;
         std::unique_ptr<std::atomic<bool>> m_is_close;
+        std::unique_ptr<std::atomic<bool>> m_is_wait;
         std::unique_ptr<std::thread> m_ins;
     };
 
 public:
-    thread_pool(size_t thread_size = 4, std::chrono::milliseconds idle_period = std::chrono::milliseconds(200),
-                size_t idle_count_max = 10000)
-        : m_index_policy(thread_size), m_idle_period(idle_period), m_idle_count_max(idle_count_max)
+    thread_pool(size_t thread_size = 4, size_t idle_count_max = 1000)
+        : m_index_policy(thread_size), m_idle_count_max(idle_count_max)
     {
         for (size_t i = 0; i < thread_size; ++i)
         {
-            auto th = std::make_unique<thread>(thread_state::normal, idle_period, idle_count_max);
+            auto th = std::make_unique<thread>(thread_state::normal, idle_count_max);
             m_threads.emplace_back(std::move(th));
         }
     }
@@ -142,18 +189,18 @@ public:
     template<typename Func>
     void push_func(Func&& f)
     {
-        for (auto& thp : m_threads)
-        {
-            auto& th = *thp;
-            if (th.m_state->load(std::memory_order_relaxed) == thread_state::idle)
-            {
-                th.m_queue->push_back(std::forward<Func>(f));
-                return;
-            }
-        }
+        // for (auto& thp : m_threads)
+        // {
+        //     auto& th = *thp;
+        //     if (th.m_state->load(std::memory_order_relaxed) == thread_state::idle)
+        //     {
+        //         th.add_task(std::forward<Func>(f));
+        //         return;
+        //     }
+        // }
         auto& thp = m_threads.at(m_index_policy.get_index());
         auto& th = *thp;
-        th.m_queue->push_back(std::forward<Func>(f));
+        th.add_task(std::forward<Func>(f));
     }
 
     template<typename Func>
@@ -161,28 +208,20 @@ public:
     {
         auto& thp = m_threads.at(index);
         auto& th = *thp;
-        th.m_queue->push_back(std::forward<Func>(f));
+        th.add_task(std::forward<Func>(f));
     }
 
-    void wait_done(std::chrono::milliseconds wait_period = std::chrono::milliseconds(100)) const
+    void wait_done() const
     {
-        std::this_thread::sleep_for(m_idle_period * 2);
-
-        while (1)
+        bool is_wait;
+        for (auto& thp : m_threads)
         {
-            std::vector<char> res{};
-            res.reserve(m_threads.size());
-            for (auto& thp : m_threads)
+            auto& th = *thp;
+            is_wait = th.m_is_wait->load(std::memory_order_acquire);
+            if(not is_wait)
             {
-                auto& th = *thp;
-                res.emplace_back(
-                    static_cast<char>(th.m_state->load(std::memory_order_relaxed) != thread_state::normal));
+                th.m_is_wait->wait(false, std::memory_order_acquire);
             }
-            if (std::all_of(res.begin(), res.end(), [](char v) { return v == 1; }))
-            {
-                return;
-            }
-            std::this_thread::sleep_for(wait_period);
         }
     }
 
@@ -197,7 +236,7 @@ public:
         m_threads.clear();
         for (size_t i = 0; i < count; ++i)
         {
-            auto th = std::make_unique<thread>(thread_state::normal, m_idle_period, m_idle_count_max);
+            auto th = std::make_unique<thread>(thread_state::normal, m_idle_count_max);
             m_threads.emplace_back(std::move(th));
         }
     }
@@ -205,7 +244,6 @@ public:
 private:
     std::vector<std::unique_ptr<thread>> m_threads;
     get_index_policy m_index_policy;
-    std::chrono::milliseconds m_idle_period;
     size_t m_idle_count_max;
 };
 

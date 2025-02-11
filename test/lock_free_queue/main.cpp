@@ -46,10 +46,10 @@ TEST(lock_free_queue, pop_front)
     int count{10};
     for (int i = 2; i < count; ++i)
     {
-        queue.push_back(i);
+        queue.push(i);
     }
     int val{};
-    auto op = queue.pop_front(val);
+    auto op = queue.pop(val);
 
     EXPECT_EQ(op, true);
     EXPECT_EQ(val, 2);
@@ -62,9 +62,9 @@ TEST(lock_free_queue, destroy)
 
     {
         mlts::lock_free_queue<int, test_allocator> queue;
-        queue.push_back(1);
-        queue.push_back(2);
-        queue.push_back(3);
+        queue.push(1);
+        queue.push(2);
+        queue.push(3);
     }
 
     bool has_leak{false};
@@ -97,7 +97,7 @@ TEST(lock_free_queue, mul_thread_push_back_cmp_res)
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back(j);
+                queue.push(j);
             }
         });
     }
@@ -150,7 +150,7 @@ TEST(lock_free_queue, mul_thread_push_back_cmp_res)
     do
     {
         int tmp_int{};
-        op = queue.pop_front(tmp_int);
+        op = queue.pop(tmp_int);
         if (op)
         {
             free_res += tmp_int;
@@ -178,7 +178,7 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res)
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -231,7 +231,7 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res)
     do
     {
         std::function<int()> tmp_int;
-        op = queue.pop_front(tmp_int);
+        op = queue.pop(tmp_int);
         if (op)
         {
             free_res += tmp_int();
@@ -262,7 +262,7 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res_with_static_mp_sc_circul
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -315,7 +315,7 @@ TEST(lock_free_queue, mul_thread_push_back_func_cmp_res_with_static_mp_sc_circul
     do
     {
         std::function<int()> tmp_int;
-        op = queue.pop_front(tmp_int);
+        op = queue.pop(tmp_int);
         if (op)
         {
             free_res += tmp_int();
@@ -345,7 +345,7 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res)
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -355,7 +355,7 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res)
     for (auto i = 0; i < all_size;)
     {
         std::function<int()> tmp_int;
-        op = queue.pop_front(tmp_int);
+        op = queue.pop(tmp_int);
         if (op)
         {
             ++i;
@@ -438,7 +438,7 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res_with_static_mp_
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -448,7 +448,7 @@ TEST(lock_free_queue, mul_thread_pop_font_push_back_func_cmp_res_with_static_mp_
     for (auto i = 0; i < all_size;)
     {
         std::function<int()> tmp_int;
-        op = queue.pop_front(tmp_int);
+        op = queue.pop(tmp_int);
         if (op)
         {
             ++i;
@@ -526,7 +526,7 @@ TEST(lock_free_queue, single_thread_pop_front_cmp_res)
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back(j);
+                queue.push(j);
             }
         });
     }
@@ -544,7 +544,7 @@ TEST(lock_free_queue, single_thread_pop_front_cmp_res)
             for (size_t j = 0; j < all_len;)
             {
                 int tmp_int{};
-                op = queue.pop_front(tmp_int);
+                op = queue.pop(tmp_int);
                 if (op)
                 {
                     mutex.lock();
@@ -590,7 +590,7 @@ TEST(lock_free_queue, single_thread_pop_front_func_cmp_res)
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -609,7 +609,7 @@ TEST(lock_free_queue, single_thread_pop_front_func_cmp_res)
             for (size_t j = 0; j < all_len;)
             {
                 std::function<int()> tmp_int{};
-                op = queue.pop_front(tmp_int);
+                op = queue.pop(tmp_int);
                 if (op)
                 {
                     mutex.lock();
@@ -658,7 +658,7 @@ TEST(lock_free_queue, single_thread_pop_front_func_cmp_res_with_mp_sc_circular_f
         threads.emplace_back([&queue, max_int]() {
             for (int j = 0; j < max_int; ++j)
             {
-                queue.push_back([j]() { return j; });
+                queue.push([j]() { return j; });
             }
         });
     }
@@ -677,7 +677,7 @@ TEST(lock_free_queue, single_thread_pop_front_func_cmp_res_with_mp_sc_circular_f
             for (size_t j = 0; j < all_len;)
             {
                 std::function<int()> tmp_int{};
-                op = queue.pop_front(tmp_int);
+                op = queue.pop(tmp_int);
                 if (op)
                 {
                     mutex.lock();
