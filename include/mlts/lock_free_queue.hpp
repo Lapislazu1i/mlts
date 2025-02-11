@@ -1,9 +1,7 @@
 #pragma once
-#include "optional"
+#include "detail/config.hpp"
 #include <atomic>
 #include <memory>
-#include <mutex>
-#include <stdexcept>
 #include <type_traits>
 
 
@@ -52,20 +50,19 @@ public:
     lock_free_queue& operator=(lock_free_queue&&) noexcept = delete;
 
     template<typename TValue>
-    void push_back(TValue val)
+    void push(TValue val)
     {
         node* n = m_alloc.allocate(1);
         std::construct_at<node>(n);
         n->m_value = std::forward<TValue>(val);
-        node* o = m_tail.load(std::memory_order_acquire);
-
-        while (not m_tail.compare_exchange_weak(o, n, std::memory_order_release, std::memory_order_acquire))
+        node* o = m_tail.load(std::memory_order_relaxed);
+        while (not m_tail.compare_exchange_weak(o, n, std::memory_order_release, std::memory_order_relaxed))
         {
         }
         o->m_next.store(n, std::memory_order_release);
     }
 
-    bool pop_front(value_type& val)
+    bool pop(value_type& val)
     {
         node* const o = m_head.load(std::memory_order_relaxed);
         node* const n = o->m_next.load(std::memory_order_acquire);
@@ -81,8 +78,8 @@ public:
     }
 
 private:
-    std::atomic<node*> m_head{nullptr};
-    std::atomic<node*> m_tail{nullptr};
+    alignas(detail::k_machine_cache_line) std::atomic<node*> m_head{nullptr};
+    alignas(detail::k_machine_cache_line) std::atomic<node*> m_tail{nullptr};
     Alloc m_alloc{};
 };
 
