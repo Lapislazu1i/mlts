@@ -2,12 +2,13 @@
 #include "detail/lambda_wrap.hpp"
 #include "overloads.hpp"
 #include "rc_type_container.hpp"
+#include <cstring>
 #include <tuple>
 
 
 namespace mlts
 {
-template<typename FunSig, size_t SSize = 32, bool IsStatic = true>
+template<typename FunSig, size_t SSize = 31, bool IsStatic = true>
 class lambda_wrap
 {
 };
@@ -48,7 +49,7 @@ public:
     using return_type = R;
     using base_t = detail::lambda_wrap_base<R, Args...>;
 
-    constexpr lambda_wrap() = default;
+    constexpr lambda_wrap() : m_is_init(false) {};
 
     template<typename Func>
     // requires std::is_nothrow_invocable_r_v<R, Func>
@@ -64,25 +65,56 @@ public:
     {
         if (m_is_init)
         {
-            reinterpret_cast<base_t*>(m_buffer)->destroy_at(reinterpret_cast<void*>(m_buffer));
+            destroy();
         }
     }
 
     lambda_wrap(const lambda_wrap&) = delete;
     lambda_wrap& operator=(const lambda_wrap&) = delete;
-    lambda_wrap(lambda_wrap&& val) noexcept = default;
-    lambda_wrap& operator=(lambda_wrap&& val) noexcept = default;
+
+    lambda_wrap(lambda_wrap&& val) noexcept
+    {
+        (*this) = std::move(val);
+    }
+
+    lambda_wrap& operator=(lambda_wrap&& val) noexcept
+    {
+        if (this == &val)
+        {
+            return *this;
+        }
+
+        if (m_is_init)
+        {
+            destroy();
+            m_is_init = false;
+        }
+        
+        if (val.m_is_init)
+        {
+            std::memcpy(m_buffer, val.m_buffer, SSize);
+            m_is_init = true;
+            val.m_is_init = false;
+        }
+        return *this;
+    }
 
     template<typename... RunArgs>
     R operator()(RunArgs... args) noexcept
     {
         return reinterpret_cast<base_t*>(m_buffer)->run(std::forward<RunArgs>(args)...);
     }
+
+    constexpr void destroy() noexcept
+    {
+        reinterpret_cast<base_t*>(m_buffer)->destroy_at(reinterpret_cast<void*>(m_buffer));
+    }
+
     char m_buffer[SSize];
     bool m_is_init{false};
 };
 
-template<typename FunSig, size_t SSize = 16>
+template<typename FunSig, size_t SSize = 31>
 class lambda_box
 {
 };
