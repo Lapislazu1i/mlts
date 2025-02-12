@@ -1,3 +1,4 @@
+#include "mlts/lambda_box.hpp"
 #include "mlts/lock_free_queue.hpp"
 #include "mlts/thread_pool.hpp"
 #include "mlts/timer.hpp"
@@ -7,6 +8,7 @@
 #include <mutex>
 #include <queue>
 #include <vector>
+
 
 
 TEST(thread_pool, push_func)
@@ -56,6 +58,44 @@ TEST(thread_pool, mul_thread_push_func)
     std::int32_t thread_size{16};
     std::int32_t add_op_size{100000};
     mlts::thread_pool<> tp(thread_size, 1000);
+    std::vector<std::thread> threads;
+    std::mutex mu{};
+    std::int64_t real_val{};
+
+    for (std::int32_t i = 0; i < thread_size; ++i)
+    {
+        threads.emplace_back([real_val_ptr = &real_val, &tp, &mu, i, add_op_size]() {
+            for (std::int32_t j = 0; j < add_op_size; ++j)
+            {
+                // std::scoped_lock lk(mu);
+                tp.push_func([j, &mu, real_val_ptr]() {
+                    std::scoped_lock lk(mu);
+                    auto old = *real_val_ptr;
+                    *real_val_ptr = j + old;
+                });
+            }
+        });
+    }
+    std::int64_t right_val{};
+    for (std::int32_t j = 0; j < add_op_size; ++j)
+    {
+        right_val += j;
+    }
+    right_val *= thread_size;
+    for (auto& th : threads)
+    {
+        th.join();
+    }
+    tp.wait_done();
+    EXPECT_EQ(real_val, right_val);
+}
+
+
+TEST(thread_pool, mul_thread_push_func_with_lambda_box)
+{
+    std::int32_t thread_size{16};
+    std::int32_t add_op_size{100000};
+    mlts::thread_pool<mlts::lambda_box<void()>> tp(thread_size, 1000);
     std::vector<std::thread> threads;
     std::mutex mu{};
     std::int64_t real_val{};

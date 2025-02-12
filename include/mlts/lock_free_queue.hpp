@@ -11,7 +11,7 @@ namespace mlts
 template<typename T>
 struct lock_free_queue_node
 {
-    T m_value;
+    T m_value{};
     std::atomic<lock_free_queue_node*> m_next{};
 };
 
@@ -53,8 +53,7 @@ public:
     void push(TValue val)
     {
         node* n = m_alloc.allocate(1);
-        std::construct_at<node>(n);
-        n->m_value = std::forward<TValue>(val);
+        std::construct_at<node>(n, T{std::forward<TValue>(val)}, nullptr);
         node* o = m_tail.load(std::memory_order_relaxed);
         while (not m_tail.compare_exchange_weak(o, n, std::memory_order_release, std::memory_order_relaxed))
         {

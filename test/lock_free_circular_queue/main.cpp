@@ -2,14 +2,9 @@
 #include "mlts/lock_free_circular_queue.hpp"
 #include "mlts/lock_free_queue.hpp"
 #include "mlts/timer.hpp"
-#include <fstream>
-#include <functional>
 #include <gtest/gtest.h>
-#include <map>
-#include <mutex>
-#include <queue>
-#include <sstream>
 #include <vector>
+#include <thread>
 
 
 TEST(lock_free_circular_queue, pop_front)
