@@ -23,3 +23,12 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 SpaceAfterTemplateKeyword: false
 AlwaysBreakTemplateDeclarations: true
+AllowShortLambdasOnASingleLine: Empty
+UseCRLF: false
+UseTab: Never
+AlignArrayOfStructures: Left
+AllowShortBlocksOnASingleLine: Empty
+Cpp11BracedListStyle: true
+CompactNamespaces: false
+AlignEscapedNewlines: Left
+LambdaBodyIndentation: OuterScope
