@@ -79,7 +79,7 @@ public:
 
     lambda_wrap& operator=(lambda_wrap&& val) noexcept
     {
-        if (this == &val)
+        if (this == std::addressof(val))
         {
             return *this;
         }
@@ -92,9 +92,9 @@ public:
         
         if (val.m_is_init)
         {
-            std::memcpy(m_buffer, val.m_buffer, SSize);
+            auto* ptr = reinterpret_cast<base_t*>(val.m_buffer);
+            ptr->move_to(m_buffer);
             m_is_init = true;
-            val.m_is_init = false;
         }
         return *this;
     }
@@ -114,7 +114,7 @@ public:
     bool m_is_init{false};
 };
 
-template<typename FunSig, size_t SSize = 31>
+template<typename FunSig, size_t SSize = 63>
 class lambda_box
 {
 };
@@ -131,8 +131,7 @@ public:
     explicit lambda_box(Func&& f) noexcept
         : m_box(lambda_wrap<func_t, SSize, sizeof(std::remove_cvref_t<Func>) <= SSize>(std::forward<Func>(f)))
     {
-        // auto tmp =  lambda_wrap<func_t, SSize, sizeof(std::remove_cvref_t<Func>) <= SSize>(std::forward<Func>(f));
-        // m_box = std::move(tmp);
+        
     }
 
     ~lambda_box() = default;

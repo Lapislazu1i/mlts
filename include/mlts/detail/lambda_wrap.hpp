@@ -19,6 +19,7 @@ struct lambda_wrap_base
     virtual R run(Args... args) noexcept = 0;
 
     virtual void destroy_at(void* buffer) noexcept = 0;
+    virtual void move_to(void* src) noexcept = 0;
 };
 
 template<typename Func, typename R, typename... Args>
@@ -47,6 +48,12 @@ struct lambda_wrap_impl : public lambda_wrap_base<R, Args...>
     {
         std::destroy_at<lambda_wrap_impl>(reinterpret_cast<lambda_wrap_impl*>(buffer));
     }
+
+    void move_to(void* src) noexcept override
+    {
+        std::construct_at<lambda_wrap_impl>(reinterpret_cast<lambda_wrap_impl*>(src), std::move(m_func));
+    }
+
 
     [[no_unique_address]] Func m_func;
 };
