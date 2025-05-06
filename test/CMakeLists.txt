@@ -15,5 +15,9 @@ add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/lambda_box")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/lock_free_circular_queue")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/lock_free_queue")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/thread_pool")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/flip_flop_queue")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/cache_object")
+
+
 
 

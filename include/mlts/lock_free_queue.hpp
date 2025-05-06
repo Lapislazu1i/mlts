@@ -50,7 +50,7 @@ public:
     lock_free_queue& operator=(lock_free_queue&&) noexcept = delete;
 
     template<typename TValue>
-    void push(TValue val)
+    void push(TValue&& val)
     {
         node* n = m_alloc.allocate(1);
         std::construct_at<node>(n, T{std::forward<TValue>(val)}, nullptr);
