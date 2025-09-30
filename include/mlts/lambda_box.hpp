@@ -114,7 +114,7 @@ public:
     bool m_is_init{false};
 };
 
-template<typename FunSig, size_t SSize = 63>
+template<typename FunSig, size_t SSize = 62>
 class lambda_box
 {
 };
