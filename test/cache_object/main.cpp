@@ -144,4 +144,11 @@ TEST(cache_object, multithread)
 
     auto str_2t = ob.get(&test_object::get_str, 1);
     EXPECT_EQ(str_2, str_2t);
+
+    auto df1 = [](){
+        return 1;
+    };
+    auto df2 = [str_2](){
+        return 2;
+    };
 }
