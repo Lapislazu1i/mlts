@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include <span>
+#include <cassert>
 
 namespace mlts
 {

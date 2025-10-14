@@ -1,4 +1,5 @@
 #include "mlts/lambda_box.hpp"
+#include "mlts/ring_buffer.hpp"
 #include "mlts/thread_pool.hpp"
 #include "mlts/timer.hpp"
 #include <fstream>
@@ -7,7 +8,6 @@
 #include <mutex>
 #include <queue>
 #include <vector>
-#include "mlts/ring_buffer.hpp"
 
 
 TEST(ring_buffer, len)
@@ -53,7 +53,7 @@ TEST(ring_buffer, over_1)
 
 
     mlts::ring_buffer<int> rb2{2};
-    std::vector<int> arr{1,2,3};
+    std::vector<int> arr{1, 2, 3};
     auto ret2 = rb2.put(arr);
     EXPECT_EQ(ret1, false);
     EXPECT_EQ(ret2, 2);
@@ -64,7 +64,30 @@ TEST(ring_buffer, over_1)
 
     EXPECT_EQ(arr2[0], 4);
     EXPECT_EQ(arr2[1], 5);
-
-
 }
 
+static inline int des_count{0};
+struct tst
+{
+    tst() = default;
+
+    ~tst()
+    {
+        ++des_count;
+    }
+    int v{};
+};
+
+TEST(ring_buffer, des)
+{
+    {
+        mlts::ring_buffer<tst> rb{2};
+    }
+    EXPECT_EQ(des_count, 0);
+    {
+        mlts::ring_buffer<tst> rb{2};
+        rb.put_one(tst{});
+        rb.put_one(tst{});
+    }
+    EXPECT_EQ(des_count, 2);
+}
