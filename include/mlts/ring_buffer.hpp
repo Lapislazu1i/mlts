@@ -68,7 +68,7 @@ public:
         size_t l = std::min(len, capacity() - (m_in & m_mask));
         for (size_t i = 0; i < l; ++i)
         {
-            m_buf[i + (m_in & m_mask)] = std::move(values[i]);
+            std::construct_at<T>(&m_buf[i + (m_in & m_mask)], std::move(values[i]));
         }
 
         size_t rl = len - l;

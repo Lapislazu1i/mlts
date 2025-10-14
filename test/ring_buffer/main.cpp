@@ -91,3 +91,27 @@ TEST(ring_buffer, des)
     }
     EXPECT_EQ(des_count, 2);
 }
+
+TEST(ring_buffer, function)
+{
+    mlts::ring_buffer<std::function<int()>> rb(16);
+    std::vector<int> vec{};
+    for (int i = 0; i < 16; ++i)
+    {
+        vec.emplace_back(i);
+    }
+
+    for (int i = 0; i < 16; ++i)
+    {
+        std::function<int()> f= [vec, i]() {
+            return vec[i];
+        };
+        rb.put_one(f);
+    }
+
+    for (int i = 0; i < 16; ++i)
+    {
+        auto ret = rb.get_one();
+        EXPECT_EQ(vec[i], (*ret)());
+    }
+}
