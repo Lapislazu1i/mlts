@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+
 struct move_st
 {
     move_st() = default;
@@ -54,10 +55,40 @@ struct move_st
     bool m_is_move{};
 };
 
+template<typename F>
+class interval_func
+{
+public:
+    interval_func(std::chrono::milliseconds ms, F&& f) : m_ms(ms), m_f(std::forward<F>(f))
+    {
+    }
+
+    bool operator()() noexcept
+    {
+        auto cur = std::chrono::steady_clock::now();
+        auto count = std::chrono::duration_cast<std::chrono::milliseconds>(cur - m_pre);
+        if (count.count() > m_ms.count())
+        {
+            m_pre = cur;
+            std::invoke(m_f);
+            return true;
+        }
+        return false;
+    }
+
+    F m_f;
+    std::chrono::milliseconds m_ms;
+    std::chrono::steady_clock::time_point m_pre{std::chrono::steady_clock::now()};
+};
+
+
+
 TEST(lambda_box, static_ret_pass_by_ref)
 {
     int res;
-    auto lambda = [&res](int v) { res = v; };
+    auto lambda = [&res](int v) {
+        res = v;
+    };
     mlts::lambda_box<void(int), 1023> f(lambda);
     f(3);
     EXPECT_EQ(3, res);
@@ -65,7 +96,9 @@ TEST(lambda_box, static_ret_pass_by_ref)
 
 TEST(lambda_box, static_ret_pass)
 {
-    mlts::lambda_box<int(int), 1023> f([](int v) { return 2 * v; });
+    mlts::lambda_box<int(int), 1023> f([](int v) {
+        return 2 * v;
+    });
     int res = f(3);
     EXPECT_EQ(6, res);
 }
@@ -96,7 +129,9 @@ TEST(lambda_box, dynamic_ret_pass_by_ref)
 {
     int res;
     char buffer[1024]{};
-    auto lambda = [&res, buffer](int v) { res = v; };
+    auto lambda = [&res, buffer](int v) {
+        res = v;
+    };
     mlts::lambda_box<void(int), 8> f(lambda);
     f(3);
     EXPECT_EQ(3, res);
@@ -106,7 +141,9 @@ TEST(lambda_box, dynamic_ret_pass)
 {
     char buffer[1024]{};
 
-    mlts::lambda_box<int(int), 8> f([buffer](int v) { return 2 * v; });
+    mlts::lambda_box<int(int), 8> f([buffer](int v) {
+        return 2 * v;
+    });
     int res = f(3);
     EXPECT_EQ(6, res);
 }
@@ -145,7 +182,9 @@ TEST(lambda_box, static_test_speed)
     mlts::timer ti;
     for (int i = 0; i < task_size; ++i)
     {
-        std_vec.emplace_back([buffer](int v) { return 2 * v; });
+        std_vec.emplace_back([buffer](int v) {
+            return 2 * v;
+        });
         // std::function<int(int)> f([buffer](int v) { return 2 * v; });
     }
     ti.start();
@@ -159,7 +198,9 @@ TEST(lambda_box, static_test_speed)
 
     for (int i = 0; i < task_size; ++i)
     {
-        mlts_vec.emplace_back([buffer](int v) { return 2 * v; });
+        mlts_vec.emplace_back([buffer](int v) {
+            return 2 * v;
+        });
         // mlts::lambda_box<int(int), 31> f([buffer](int v) { return 2 * v; });
     }
     ti.start();
