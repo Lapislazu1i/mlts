@@ -11,7 +11,7 @@
 #include <vector>
 
 template<typename T>
-using t_ring_buffer = mlts::ring_buffer<T>;
+using t_ring_buffer = mlts::atomic_ring_buffer<T>;
 
 TEST(ring_buffer, len)
 {

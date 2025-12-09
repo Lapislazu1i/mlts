@@ -1,5 +1,5 @@
 #pragma once
-#include <mutex>
+#include <atomic>
 #include <vector>
 #include <optional>
 #include <span>
@@ -7,19 +7,21 @@
 
 namespace mlts
 {
+
+// only for SPSC
 template<typename T>
-struct ring_buffer
+struct atomic_ring_buffer
 {
 public:
 
-    ring_buffer(size_t capacity)
+    atomic_ring_buffer(size_t capacity)
         : m_buf(reinterpret_cast<T*>(std::malloc(capacity * esize)))
         , m_mask(capacity - 1)
     {
         assert(capacity % 2 == 0);
     }
 
-    ~ring_buffer()
+    ~atomic_ring_buffer()
     {
         auto in = m_in & m_mask;
         auto out = m_out & m_mask;
@@ -30,10 +32,10 @@ public:
         std::free(reinterpret_cast<void*>(m_buf));
     }
 
-    ring_buffer(const ring_buffer&) = delete;
-    ring_buffer& operator=(const ring_buffer&) = delete;
-    ring_buffer(ring_buffer&&) noexcept = delete;
-    ring_buffer* operator=(ring_buffer&&) noexcept = delete;
+    atomic_ring_buffer(const atomic_ring_buffer&) = delete;
+    atomic_ring_buffer& operator=(const atomic_ring_buffer&) = delete;
+    atomic_ring_buffer(atomic_ring_buffer&&) noexcept = delete;
+    atomic_ring_buffer* operator=(atomic_ring_buffer&&) noexcept = delete;
 
     size_t put(std::span<T> values)
     {
@@ -67,13 +69,15 @@ public:
 
     size_t put(T* values, size_t len)
     {
-        std::lock_guard lk(m_mu);
-        len = std::min(len, capacity() - m_in + m_out);
+        auto in = m_in.load(std::memory_order_acquire);
+        auto out = m_out.load(std::memory_order_acquire);
+        len = std::min(len, capacity() - in + out);
+        m_in.store(len + in, std::memory_order_release);
 
-        size_t l = std::min(len, capacity() - (m_in & m_mask));
+        size_t l = std::min(len, capacity() - (in & m_mask));
         for (size_t i = 0; i < l; ++i)
         {
-            std::construct_at<T>(&m_buf[i + (m_in & m_mask)], std::move(values[i]));
+            std::construct_at<T>(&m_buf[i + (in & m_mask)], std::move(values[i]));
         }
 
         size_t rl = len - l;
@@ -82,19 +86,22 @@ public:
             m_buf[i] = std::move(values[i + l]);
         }
 
-        m_in += len;
 
         return len;
     }
 
     size_t get(T* values, size_t len)
     {
-        std::lock_guard lk(m_mu);
-        len = std::min(len, m_in - m_out);
-        size_t l = std::min(len, capacity() - (m_out & m_mask));
+        auto in = m_in.load(std::memory_order_acquire);
+        auto out = m_out.load(std::memory_order_acquire);
+
+        len = std::min(len, in - out);
+        m_out.store(len + out, std::memory_order_release);
+
+        size_t l = std::min(len, capacity() - (out & m_mask));
         for (size_t i = 0; i < l; ++i)
         {
-            values[i] = std::move(m_buf[i + (m_out & m_mask)]);
+            values[i] = std::move(m_buf[i + (out & m_mask)]);
         }
 
         size_t rl = len - l;
@@ -102,20 +109,17 @@ public:
         {
             values[l + i] = std::move(m_buf[i]);
         }
-        m_out += len;
         return len;
     }
 
     size_t exist_len() const
     {
-        std::lock_guard lk(m_mu);
-        return m_in - m_out;
+        return m_in.load(std::memory_order_relaxed) - m_out.load(std::memory_order_relaxed);
     }
 
     size_t empty_len() const
     {
-        std::lock_guard lk(m_mu);
-        return m_mask + 1 - m_in + m_out;
+        return m_mask + 1 - m_in.load(std::memory_order_relaxed) + m_out.load(std::memory_order_relaxed);
     }
 
     size_t capacity() const noexcept
@@ -129,11 +133,10 @@ public:
     }
 
 private:
-    size_t m_in{};
-    size_t m_out{};
+    std::atomic<size_t> m_in{};
+    std::atomic<size_t> m_out{};
     const size_t m_mask;
     T* m_buf{};
-    mutable std::mutex m_mu{};
     static constexpr inline size_t esize = sizeof(T);
 };
 
