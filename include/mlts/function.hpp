@@ -13,13 +13,13 @@ struct no_exp
 };
 constexpr inline no_exp no_exp_t{};
 
-template<typename Sig>
+template<typename Sig, size_t SSize = 24>
 class function;
 
-template<typename R, typename... Args>
-class function<R(Args...)>
+template<typename R, typename... Args, size_t SSize>
+class function<R(Args...), SSize>
 {
-    constexpr static inline size_t storage_size = 24;
+    constexpr static inline size_t storage_size = SSize;
     constexpr static inline size_t storage_align = alignof(std::max_align_t);
     struct vtable
     {
@@ -150,7 +150,7 @@ class function<R(Args...)>
     }
 
     template<typename F>
-    constexpr void assign(F&& f) noexcept(std::is_nothrow_constructible_v<F, F&&>)
+    constexpr void assign(F&& f) noexcept(std::is_nothrow_constructible_v<std::decay_t<F>, F&&>)
     {
         using Functor = std::decay_t<F>;
 
@@ -211,7 +211,12 @@ public:
     }
 
     template<typename F>
-    constexpr function(F&& f)
+    constexpr function(F&& f) 
+        noexcept(
+            (!std::is_same_v<const function&, const std::decay_t<F>&> 
+            && std::is_nothrow_constructible_v<std::decay_t<F>, F&&>)
+            || function::is_trivial<std::decay_t<F>>()
+        )
     {
         using Functor = std::decay_t<F>;
         if constexpr (std::is_same_v<const function&, const Functor&>)
@@ -262,7 +267,7 @@ public:
     }
 
     template<typename F>
-    constexpr function& operator=(F&& f)
+    constexpr function& operator=(F&& f) noexcept
     {
         this->~function();
         assign(std::forward<F>(f));
